@@ -85,7 +85,7 @@ jobs:
 #     uses: aerospike/shared-workflows/.github/workflows/reusable_execute-build.yaml@7f633569d89f706899e6b8f2151a3b200576c1fd # v3.1.1
 #     with:
 #       gh-workflows-ref: 7f633569d89f706899e6b8f2151a3b200576c1fd # v3.1.1
-#       jf-project: Connect
+#       jf-project: connect
 #       jf-build-name: go-micro-aerospike
 #       jf-build-id: ${{ github.run_id }}-${{ github.run_attempt }}-buildinfo-generic-x86_64
 #       gh-source-path: repo-source
@@ -97,8 +97,8 @@ jobs:
 #         echo "hello-world" > dist/hello-world.txt
 #       gh-artifact-directory: dist
 #       gh-artifact-name: build-artifacts-generic-x86_64
-#       oidc-provider-name: gh-dev-test
-#       oidc-audience: aerospike/testing
+#       oidc-provider-name: gh-aerospike
+#       oidc-audience: aerospike
 #     secrets: inherit
 #
 #   # Merge per-build artifacts into a single artifact for downstream jobs.
@@ -163,11 +163,11 @@ jobs:
 #     uses: aerospike/shared-workflows/.github/workflows/reusable_deploy-artifacts.yaml@7f633569d89f706899e6b8f2151a3b200576c1fd # v3.1.1
 #     with:
 #       gh-workflows-ref: 7f633569d89f706899e6b8f2151a3b200576c1fd # v3.1.1
-#       jf-project: Connect
+#       jf-project: connect
 #       jf-build-name: go-micro-aerospike
 #       version: ${{ needs.extract-version.outputs.version }}
 #       jf-build-id: ${{ github.run_id }}-${{ github.run_attempt }}
 #       jf-metadata-build-id: ${{ github.run_id }}-${{ github.run_attempt }}-buildinfo
-#       oidc-provider-name: gh-dev-test
-#       oidc-audience: aerospike/testing
+#       oidc-provider-name: gh-aerospike
+#       oidc-audience: aerospike
 #     secrets: inherit
