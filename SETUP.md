@@ -154,5 +154,5 @@ If you cannot run the script, configure these settings manually:
 | Workflow             | Trigger           | Purpose                                          |
 | -------------------- | ----------------- | ------------------------------------------------ |
 | `cicd-standard.yaml` | _(commented out)_ | Standard orchestrated build/sign/deploy pipeline |
-| `pr-hygiene.yml`     | Pull requests     | Validate JIRA ticket reference in PR title       |
+| `pr-hygiene.yml`     | Pull requests     | Validate PR title format                         |
 | `trunk.yml`          | Push to main, PRs | Trunk Check linting                              |

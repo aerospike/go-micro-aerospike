@@ -48,25 +48,20 @@ type(scope): description
 - **scope** is optional, lowercase, in parentheses
 - **description** starts with a lowercase letter
 
-#### JIRA Ticket Requirement
-
-A JIRA ticket in square brackets is required for these types: **feat, fix, docs, ci, refactor**.
-This rule can be disabled by using the `skip-jira` label on the PR (commitlint still runs).
-
 #### Examples
 
 ```text
-feat(workflows): [INFRA-370] add integration test stage
-fix: [ENG-123] correct routing logic for edge cases
-docs(readme): [INFRA-451] update setup instructions
-ci: [INFRA-400] switch to shared reusable workflows
+feat(workflows): add integration test stage
+fix: correct routing logic for edge cases
+docs(readme): update setup instructions
+ci: switch to shared reusable workflows
 chore(deps): bump shared-workflows to v3
 test: add unit tests for auth module
 ```
 
 #### Default Allowlisted Patterns
 
-The following PR title patterns bypass **both** commitlint type validation and the JIRA ticket requirement:
+The following PR title patterns bypass commitlint type validation:
 
 - **Dependabot**: `chore(deps): bump ...` (any type with `deps` scope)
 - **StepSecurity**: `[StepSecurity] ...`

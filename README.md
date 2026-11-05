@@ -30,7 +30,7 @@ cd go-micro-aerospike
 ├── .github/
 │   ├── workflows/
 │   │   ├── ...
-│   │   ├── pr-hygiene.yml        # JIRA ticket check on PRs
+│   │   ├── pr-hygiene.yml        # PR title check
 │   │   └── trunk.yml             # Trunk Check linting
 │   └── dependabot.yml            # Dependabot configuration
 └── ...
