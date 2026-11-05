@@ -14,15 +14,15 @@
 The template ships with working test values for its own CI/CD pipeline.
 When you run `setup.sh`, these are replaced with your project's values.
 
-| Template Value      | Location                                                        | Description                            |
-| ------------------- | --------------------------------------------------------------- | -------------------------------------- |
-| `test`              | cicd-standard.yaml, cicd-composable.yaml (`jf-project`)         | JFrog Artifactory project name         |
-| `test-build`        | cicd-standard.yaml, cicd-composable.yaml (`jf-build-name`)      | JFrog build identifier                 |
-| `gh-dev-test`       | cicd-standard.yaml, cicd-composable.yaml (`oidc-provider-name`) | JFrog OIDC provider for GitHub Actions |
-| `aerospike/testing` | cicd-standard.yaml, cicd-composable.yaml (`oidc-audience`)      | OIDC audience claim                    |
-| `go-micro-aerospike`    | README.md, CONTRIBUTING.md                                      | Human-readable project name            |
-| `go-micro-aerospike` | README.md                                                       | GitHub repository name                 |
-| `CODEOWNERS`        | .github/CODEOWNERS                                              | Team/user who owns the code            |
+| Template Value       | Location                                  | Description                            |
+| -------------------- | ----------------------------------------- | -------------------------------------- |
+| `test`               | cicd-standard.yaml (`jf-project`)         | JFrog Artifactory project name         |
+| `test-build`         | cicd-standard.yaml (`jf-build-name`)      | JFrog build identifier                 |
+| `gh-dev-test`        | cicd-standard.yaml (`oidc-provider-name`) | JFrog OIDC provider for GitHub Actions |
+| `aerospike/testing`  | cicd-standard.yaml (`oidc-audience`)      | OIDC audience claim                    |
+| `go-micro-aerospike` | README.md, CONTRIBUTING.md                | Human-readable project name            |
+| `go-micro-aerospike` | README.md                                 | GitHub repository name                 |
+| `CODEOWNERS`         | .github/CODEOWNERS                        | Team/user who owns the code            |
 
 ## Required GitHub Secrets
 
@@ -151,9 +151,8 @@ If you cannot run the script, configure these settings manually:
 
 ## Workflows Overview
 
-| Workflow               | Trigger           | Purpose                                           |
-| ---------------------- | ----------------- | ------------------------------------------------- |
-| `cicd-standard.yaml`   | _(commented out)_ | Standard orchestrated build/sign/deploy pipeline  |
-| `cicd-composable.yaml` | _(commented out)_ | Composable pipeline with custom inter-stage steps |
-| `pr-hygiene.yml`       | Pull requests     | Validate JIRA ticket reference in PR title        |
-| `trunk.yml`            | Push to main, PRs | Trunk Check linting                               |
+| Workflow             | Trigger           | Purpose                                          |
+| -------------------- | ----------------- | ------------------------------------------------ |
+| `cicd-standard.yaml` | _(commented out)_ | Standard orchestrated build/sign/deploy pipeline |
+| `pr-hygiene.yml`     | Pull requests     | Validate JIRA ticket reference in PR title       |
+| `trunk.yml`          | Push to main, PRs | Trunk Check linting                              |

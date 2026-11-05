@@ -9,10 +9,6 @@
 #   Choose this if you want a single workflow call that handles everything.
 #   You provide a build script and configuration; the orchestrator does the rest.
 #
-# WHEN TO USE cicd-composable.yaml INSTEAD:
-#   Choose composable if you need custom steps between pipeline stages
-#   (e.g., integration tests after build but before signing).
-#
 # GETTING STARTED:
 #   1. Replace the triggers and no-op job below with the commented-out pipeline
 #   2. Replace the dummy build-script with your actual build commands

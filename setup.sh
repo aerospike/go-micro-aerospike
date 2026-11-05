@@ -54,13 +54,12 @@ replace_in_file() {
     fi
 }
 
-# CI/CD workflow files: replace JFrog and OIDC values in both standard and composable
-for cicd_file in .github/workflows/cicd-standard.yaml .github/workflows/cicd-composable.yaml; do
-    replace_in_file "$cicd_file" "jf-project: test" "jf-project: ${JF_PROJECT}"
-    replace_in_file "$cicd_file" "jf-build-name: test-build" "jf-build-name: ${JF_BUILD_NAME}"
-    replace_in_file "$cicd_file" "oidc-provider-name: gh-dev-test" "oidc-provider-name: ${OIDC_PROVIDER}"
-    replace_in_file "$cicd_file" "oidc-audience: aerospike/testing" "oidc-audience: ${OIDC_AUDIENCE}"
-done
+# CI/CD workflow: replace JFrog and OIDC values
+cicd_file=.github/workflows/cicd-standard.yaml
+replace_in_file "$cicd_file" "jf-project: test" "jf-project: ${JF_PROJECT}"
+replace_in_file "$cicd_file" "jf-build-name: test-build" "jf-build-name: ${JF_BUILD_NAME}"
+replace_in_file "$cicd_file" "oidc-provider-name: gh-dev-test" "oidc-provider-name: ${OIDC_PROVIDER}"
+replace_in_file "$cicd_file" "oidc-audience: aerospike/testing" "oidc-audience: ${OIDC_AUDIENCE}"
 
 # --- Replace project name placeholders in markdown files ---
 
@@ -82,7 +81,6 @@ cat > .github/CODEOWNERS <<EOF
 EOF
 
 echo "  Updated .github/workflows/cicd-standard.yaml"
-echo "  Updated .github/workflows/cicd-composable.yaml"
 echo "  Updated markdown files with project name"
 echo "  Generated .github/CODEOWNERS"
 
@@ -92,8 +90,7 @@ echo ""
 echo "Remaining manual steps:"
 echo ""
 echo "  1. Uncomment and customize a CI/CD workflow:"
-echo "     - cicd-standard.yaml   (simple orchestrated pipeline)"
-echo "     - cicd-composable.yaml (custom steps between stages)"
+echo "     - cicd-standard.yaml (simple orchestrated pipeline)"
 echo "     Replace the dummy build-script with your actual build commands."
 echo ""
 echo "  2. Uncomment your package ecosystem in .github/dependabot.yml"
