@@ -18,6 +18,22 @@ Thank you for your interest in contributing to this Aerospike project! We welcom
 
 ## Development Setup
 
+### Go development
+
+Use Go 1.26.5 or later (see `go.mod`) and Docker Compose v2 for integration tests.
+
+```bash
+make build vet test-unit test-unit-race
+make fixture-up
+make test-integration test-integration-race
+```
+
+The Makefile defaults integration tests to `127.0.0.1:3100`; set
+`AEROSPIKE_ADDR` to use another test server. Use a disposable server: the
+integration suite writes and deletes test records. `scripts/ci.sh` runs the
+same checks with a Compose fixture and tears it down on exit. Run `gofmt`
+on Go files and `trunk check` before opening a pull request.
+
 ### Repo Tooling
 
 Linting will be run on PRs; you can save yourself some time and annoyance by linting as you write.
