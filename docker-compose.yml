@@ -1,0 +1,19 @@
+services:
+  aerospike:
+    image: aerospike/aerospike-server:8.1.2.4@sha256:65478a14549894cb903783a973f6801c327c12de95c3dd147a92f085df4f9717
+    cap_drop:
+      - ALL
+    cap_add:
+      - SETGID
+      - SETUID
+    ports:
+      - "127.0.0.1:${AEROSPIKE_PORT:-3100}:3000"
+      - "127.0.0.1:${AEROSPIKE_FABRIC_PORT:-3101}:3001"
+      - "127.0.0.1:${AEROSPIKE_HEARTBEAT_PORT:-3102}:3002"
+    volumes:
+      - ./aerospike.conf:/etc/aerospike/aerospike.template.conf:ro
+    healthcheck:
+      test: ["CMD", "asinfo", "-v", "status"]
+      interval: 2s
+      timeout: 3s
+      retries: 30

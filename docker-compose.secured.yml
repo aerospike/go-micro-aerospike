@@ -1,0 +1,58 @@
+# Opt-in secured fixture: Enterprise Edition eval image with TLS and RBAC.
+# Bring up with `make secured-up`; the eval feature key is baked into the
+# image. No real credentials or entitlement material is committed.
+services:
+  tls-certs-init:
+    image: &tls-image ${AEROSPIKE_TLS_IMAGE:-aerospike/aerospike-server-enterprise:8.2.0.1@sha256:ac93616c66bda965098b65a4138df585987fb27daf5b77b8882119f7904a9a60}
+    cap_drop:
+      - ALL
+    entrypoint: ["timeout", "120", "sh", "/scripts/gen-tls-certs.sh"]
+    environment:
+      AEROSPIKE_TLS_CERT_DIR: /certs
+    volumes:
+      - ./scripts/gen-tls-certs.sh:/scripts/gen-tls-certs.sh:ro
+      - ./docker-certs:/certs
+
+  aerospike-tls:
+    image: *tls-image
+    cap_drop:
+      - ALL
+    cap_add:
+      - SETGID
+      - SETUID
+    depends_on:
+      tls-certs-init:
+        condition: service_completed_successfully
+    ports:
+      - "127.0.0.1:4533:4333"
+    volumes:
+      - ./aerospike-tls.conf:/etc/aerospike/aerospike.template.conf:ro
+      - ./docker-certs/server:/opt/aerospike/certs:ro
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "asinfo",
+          "--user",
+          "admin",
+          "--password",
+          "admin",
+          "-v",
+          "status",
+        ]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  tls-provision:
+    image: *tls-image
+    cap_drop:
+      - ALL
+    entrypoint: ["timeout", "60", "sh", "/scripts/provision-tls-users.sh"]
+    environment:
+      AEROSPIKE_TLS_HOST: aerospike-tls
+    volumes:
+      - ./scripts/provision-tls-users.sh:/scripts/provision-tls-users.sh:ro
+    depends_on:
+      aerospike-tls:
+        condition: service_healthy
