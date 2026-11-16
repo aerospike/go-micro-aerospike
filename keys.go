@@ -1,6 +1,8 @@
 package aerospike
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"strconv"
 )
@@ -17,16 +19,25 @@ const (
 )
 
 // Additional bins on chunk records: ek and cv let Sweep map a chunk back to its
-// head without relying on sendKey.
+// head without relying on sendKey, and ow records the owning data set so a
+// Sweep of a shared chunk set never touches another data set's chunks.
 const (
-	binChunkHead = "ek"
-	binChunkVer  = "cv"
+	binChunkHead  = "ek"
+	binChunkVer   = "cv"
+	binChunkOwner = "ow"
 )
 
 const layoutVersion = 1
 
-// indexName is the secondary index on bin t of the data set.
-const indexName = "go_micro_table"
+// indexName derives the secondary-index name for a data set. Sindex names are
+// unique per namespace while each index binds one set, so a fixed name can
+// index at most one data set per namespace; a set-derived name stays unique
+// and deterministic. Hashed because set names (63 bytes) plus a readable
+// prefix could exceed the 64-byte index-name limit.
+func indexName(set string) string {
+	sum := sha256.Sum256([]byte(set))
+	return "gmt_" + hex.EncodeToString(sum[:8])
+}
 
 // defaultTable is used when no table is configured.
 const defaultTable = "micro"

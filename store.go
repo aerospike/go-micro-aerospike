@@ -65,8 +65,7 @@ type Sweeper interface {
 func NewStore(opts ...store.Option) store.Store {
 	s := &aerospikeStore{
 		opts: store.Options{
-			Database: "test",
-			Context:  nil,
+			Context: nil,
 		},
 		namespaces: map[string]bool{},
 	}
@@ -84,6 +83,7 @@ func (s *aerospikeStore) Init(opts ...store.Option) error {
 	s.initMu.Lock()
 	defer s.initMu.Unlock()
 	s.mu.Lock()
+	oldOpts, oldCfg, oldNamespaces := s.opts, s.cfg, s.namespaces
 	for _, o := range opts {
 		o(&s.opts)
 	}
@@ -91,11 +91,20 @@ func (s *aerospikeStore) Init(opts ...store.Option) error {
 	cfg := s.cfg
 	so := s.opts
 	s.mu.Unlock()
+	revert := func() {
+		s.mu.Lock()
+		s.opts = oldOpts
+		s.cfg = oldCfg
+		s.namespaces = oldNamespaces
+		s.mu.Unlock()
+	}
 
 	if err := validateConfig(cfg); err != nil {
+		revert()
 		return err
 	}
 	if so.Database == "" {
+		revert()
 		return fmt.Errorf("aerospike: no namespace configured (store Database option)")
 	}
 
@@ -123,6 +132,7 @@ func (s *aerospikeStore) Init(opts ...store.Option) error {
 
 	client, err := aero.NewClientWithPolicyAndHost(policy, hosts...)
 	if err != nil {
+		revert()
 		return fmt.Errorf("aerospike: connect: %w", err)
 	}
 	s.mu.Lock()
@@ -133,6 +143,9 @@ func (s *aerospikeStore) Init(opts ...store.Option) error {
 	fail := func(err error) error {
 		s.mu.Lock()
 		s.client = old
+		s.opts = oldOpts
+		s.cfg = oldCfg
+		s.namespaces = oldNamespaces
 		s.mu.Unlock()
 		client.Close()
 		return err
@@ -276,6 +289,7 @@ func (s *aerospikeStore) checkNamespace(client *aero.Client, ns string) error {
 // ensureIndex creates the secondary index on bin t if absent and waits for it
 // to be built.
 func (s *aerospikeStore) ensureIndex(client *aero.Client, cfg config, ns string) error {
+	name := indexName(cfg.dataSet)
 	nodes := client.GetNodes()
 	if len(nodes) == 0 {
 		return fmt.Errorf("aerospike: no cluster nodes available")
@@ -283,18 +297,18 @@ func (s *aerospikeStore) ensureIndex(client *aero.Client, cfg config, ns string)
 	res, err := nodes[0].RequestInfo(&aero.InfoPolicy{}, "sindex/"+ns)
 	if err == nil {
 		for _, entry := range strings.Fields(res["sindex/"+ns]) {
-			if strings.Contains(entry, "indexname="+indexName) {
+			if strings.Contains(entry, "indexname="+name) {
 				return s.waitIndexPopulated(client, cfg, ns)
 			}
 		}
 	}
 
-	task, ierr := client.CreateIndex(nil, ns, cfg.dataSet, indexName, binTable, aero.STRING)
+	task, ierr := client.CreateIndex(nil, ns, cfg.dataSet, name, binTable, aero.STRING)
 	if ierr != nil {
 		if ierr.Matches(types.INDEX_FOUND) {
 			return s.waitIndexPopulated(client, cfg, ns)
 		}
-		return &MissingIndexError{Namespace: ns, Set: cfg.dataSet, Bin: binTable, Index: indexName, Cause: ierr}
+		return &MissingIndexError{Namespace: ns, Set: cfg.dataSet, Bin: binTable, Index: name, Cause: ierr}
 	}
 
 	deadline := time.Now().Add(indexReadyTimeout)
@@ -307,7 +321,7 @@ func (s *aerospikeStore) ensureIndex(client *aero.Client, cfg config, ns string)
 			return nil
 		}
 		if time.Now().After(deadline) {
-			return fmt.Errorf("aerospike: timed out waiting for index %s", indexName)
+			return fmt.Errorf("aerospike: timed out waiting for index %s", name)
 		}
 		time.Sleep(100 * time.Millisecond)
 	}
@@ -334,7 +348,7 @@ func (s *aerospikeStore) waitIndexPopulated(client *aero.Client, cfg config, ns 
 			}
 		}
 		if time.Now().After(deadline) {
-			return fmt.Errorf("aerospike: timed out waiting for index %s to finish building", indexName)
+			return fmt.Errorf("aerospike: timed out waiting for index %s to finish building", indexName(cfg.dataSet))
 		}
 		time.Sleep(100 * time.Millisecond)
 	}
@@ -538,6 +552,7 @@ func (s *aerospikeStore) writeChunked(client *aero.Client, c config, ns, table, 
 			aero.PutOp(aero.NewBin(binValue, rec.Value[i*c.chunkSize:end])),
 			aero.PutOp(aero.NewBin(binChunkHead, encoded)),
 			aero.PutOp(aero.NewBin(binChunkVer, version)),
+			aero.PutOp(aero.NewBin(binChunkOwner, c.dataSet)),
 		))
 	}
 	if err := client.BatchOperate(nil, records); err != nil {
@@ -715,6 +730,10 @@ func (s *aerospikeStore) recordFromHead(client *aero.Client, cfg config, ns stri
 		out.Key = k
 	}
 	switch m := rec.Bins[binMeta].(type) {
+	case []byte:
+		if err := json.Unmarshal(m, &out.Metadata); err != nil {
+			return nil, fmt.Errorf("aerospike: deserialise metadata: %w", err)
+		}
 	case map[string]interface{}:
 		out.Metadata = m
 	case map[interface{}]interface{}:
@@ -858,7 +877,7 @@ func (s *aerospikeStore) listKeys(client *aero.Client, cfg config, ns, table, pr
 
 func (s *aerospikeStore) maybeIndexError(cfg config, ns string, err error) error {
 	if e, ok := err.(aero.Error); ok && e.Matches(types.INDEX_NOTFOUND) {
-		return &MissingIndexError{Namespace: ns, Set: cfg.dataSet, Bin: binTable, Index: indexName, Cause: err}
+		return &MissingIndexError{Namespace: ns, Set: cfg.dataSet, Bin: binTable, Index: indexName(cfg.dataSet), Cause: err}
 	}
 	return err
 }
@@ -935,7 +954,7 @@ func (s *aerospikeStore) Sweep(opts ...store.Option) (int, error) {
 			aero.ExpIntVal(cfg.sweepGrace.Milliseconds()),
 		)
 	}
-	rs, err := client.ScanAll(policy, ns, cfg.chunkSet, binChunkHead, binChunkVer)
+	rs, err := client.ScanAll(policy, ns, cfg.chunkSet, binChunkHead, binChunkVer, binChunkOwner)
 	if err != nil {
 		return 0, err
 	}
@@ -953,6 +972,9 @@ func (s *aerospikeStore) Sweep(opts ...store.Option) (int, error) {
 		encoded, _ := r.Bins[binChunkHead].(string)
 		version, _ := r.Bins[binChunkVer].(string)
 		if encoded == "" || version == "" {
+			continue
+		}
+		if owner, _ := r.Bins[binChunkOwner].(string); owner != "" && owner != cfg.dataSet {
 			continue
 		}
 		hk, _ := aero.NewKey(ns, cfg.dataSet, encoded)

@@ -157,6 +157,9 @@ func WithMaxListKeys(n int) store.Option { return setOption(maxListKeysKey{}, n)
 
 // WithCreateIndex controls whether Init ensures the secondary index on the
 // table bin exists. Default true; set false when operators pre-create it.
+// The expected index name is deterministic per data set —
+// "gmt_" + sha256(dataSet)[:8] hex — e.g. gmt_186641861d6d9f2f for the
+// default "micro" set.
 func WithCreateIndex(enabled bool) store.Option { return setOption(createIndexKey{}, enabled) }
 
 // WithAuth enables authentication with the given credentials. The password is

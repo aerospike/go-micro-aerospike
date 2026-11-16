@@ -878,3 +878,41 @@ func TestRepeatedInitClosesClient(t *testing.T) {
 		t.Fatal("previous client not closed on repeated Init (leaked)")
 	}
 }
+
+// TestSweepSharedChunkSetForeignOwner: two stores share one chunk set but
+// different data sets; a sweep must never reclaim chunks owned by another
+// data set, even when table and key collide.
+func TestSweepSharedChunkSetForeignOwner(t *testing.T) {
+	suffix := fmt.Sprintf("%d", time.Now().UnixNano())
+	chunkSet := "shc" + suffix
+	a := newTestStore(t, WithDataSet("sha"+suffix), WithChunkSet(chunkSet),
+		WithInlineThreshold(1024), WithChunkSize(1024), WithCreateIndex(false))
+	b := newTestStore(t, WithDataSet("shb"+suffix), WithChunkSet(chunkSet),
+		WithInlineThreshold(1024), WithChunkSize(1024), WithCreateIndex(false))
+
+	vA := []byte(strings.Repeat("a", 4096))
+	vB := []byte(strings.Repeat("b", 4096))
+	if err := a.Write(&store.Record{Key: "chunked", Value: vA}); err != nil {
+		t.Fatal(err)
+	}
+	if err := b.Write(&store.Record{Key: "chunked", Value: vB}); err != nil {
+		t.Fatal(err)
+	}
+	if r, err := a.Read("chunked"); err != nil || string(r[0].Value) != string(vA) {
+		t.Fatalf("A read: %v", err)
+	}
+	if r, err := b.Read("chunked"); err != nil || string(r[0].Value) != string(vB) {
+		t.Fatalf("B read: %v", err)
+	}
+
+	if _, err := a.(Sweeper).Sweep(WithSweepGrace(0)); err != nil {
+		t.Fatal(err)
+	}
+	r, err := b.Read("chunked")
+	if err != nil {
+		t.Fatalf("B read after A's sweep: %v", err)
+	}
+	if string(r[0].Value) != string(vB) {
+		t.Fatal("B's value corrupted by A's sweep")
+	}
+}

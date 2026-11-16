@@ -36,7 +36,7 @@ acl 'enable; manage acl grant user go-micro-tls-client roles read-write' 'alread
 # Pre-create the secondary index the store expects (read-write users cannot
 # create it themselves; the denied-creation path is a separate test).
 if ! out=$(timeout 15 asinfo --user admin --password admin -h "$HOST" \
-	-v 'sindex-create:ns=test;set=micro;indexname=go_micro_table;indextype=default;indexdata=t,string' 2>&1); then
+	-v 'sindex-create:ns=test;set=micro;indexname=gmt_186641861d6d9f2f;indextype=default;indexdata=t,string' 2>&1); then
 	case $out in
 		*already*exists*) ;;
 		*) printf '%s\n' "$out" >&2; exit 1 ;;
