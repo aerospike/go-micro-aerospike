@@ -319,7 +319,7 @@ func TestReadPrefixSuffix(t *testing.T) {
 	if string(prefs[0].Value) != "v-ab" || string(prefs[1].Value) != string(chunked) {
 		t.Fatal("prefix read values wrong (mixed inline/chunked)")
 	}
-	if prefs[0].Metadata["i"] != float64(1) && prefs[0].Metadata["i"] != 1 {
+	if prefs[0].Metadata["i"] != int64(1) {
 		t.Fatalf("multi-read metadata missing: %+v", prefs[0].Metadata)
 	}
 	// Suffix only.

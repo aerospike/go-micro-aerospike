@@ -753,7 +753,7 @@ func TestVerifyMixedVersion(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if r[0].Metadata["rev"] != 2 {
+	if r[0].Metadata["rev"] != int64(2) {
 		t.Fatalf("expected metadata rev 2 with v2 value, got %v", r[0].Metadata)
 	}
 }

@@ -9,6 +9,7 @@
 package aerospike
 
 import (
+	"bytes"
 	crand "crypto/rand"
 	"encoding/hex"
 	"encoding/json"
@@ -429,6 +430,55 @@ func writeTTL(rec *store.Record, wopts *store.WriteOptions) uint32 {
 	}
 }
 
+// encodeMetadata serialises metadata as JSON, matching the other go-micro
+// backends. Storing one opaque blob avoids the native map encoder's failures
+// on non-uniform nesting, and the same bytes are used for the size check.
+func encodeMetadata(m map[string]interface{}) ([]byte, error) {
+	b, err := json.Marshal(m)
+	if err != nil {
+		return nil, fmt.Errorf("aerospike: serialise metadata: %w", err)
+	}
+	return b, nil
+}
+
+// decodeMetadata parses JSON metadata, preserving integer precision: integral
+// numbers become int64 (uint64 when above MaxInt64), all others float64.
+func decodeMetadata(b []byte) (map[string]interface{}, error) {
+	dec := json.NewDecoder(bytes.NewReader(b))
+	dec.UseNumber()
+	var m map[string]interface{}
+	if err := dec.Decode(&m); err != nil {
+		return nil, fmt.Errorf("aerospike: deserialise metadata: %w", err)
+	}
+	for k, v := range m {
+		m[k] = normalizeJSONNumbers(v)
+	}
+	return m, nil
+}
+
+func normalizeJSONNumbers(v interface{}) interface{} {
+	switch t := v.(type) {
+	case json.Number:
+		if i, err := t.Int64(); err == nil {
+			return i
+		}
+		if u, err := strconv.ParseUint(t.String(), 10, 64); err == nil {
+			return u
+		}
+		f, _ := t.Float64()
+		return f
+	case map[string]interface{}:
+		for k, e := range t {
+			t[k] = normalizeJSONNumbers(e)
+		}
+	case []interface{}:
+		for i, e := range t {
+			t[i] = normalizeJSONNumbers(e)
+		}
+	}
+	return v
+}
+
 // validateSizes enforces the key, table, metadata and total-value caps.
 func (s *aerospikeStore) validateSizes(c config, table string, rec *store.Record) error {
 	if len(rec.Key) > c.maxKeySize {
@@ -438,9 +488,9 @@ func (s *aerospikeStore) validateSizes(c config, table string, rec *store.Record
 		return fmt.Errorf("%w: %d > %d bytes", ErrTableTooLarge, len(table), c.maxTableSize)
 	}
 	if rec.Metadata != nil {
-		b, err := json.Marshal(rec.Metadata)
+		b, err := encodeMetadata(rec.Metadata)
 		if err != nil {
-			return fmt.Errorf("aerospike: serialise metadata: %w", err)
+			return err
 		}
 		if len(b) > c.maxMetadata {
 			return fmt.Errorf("%w: %d > %d bytes", ErrMetadataTooLarge, len(b), c.maxMetadata)
@@ -491,7 +541,11 @@ func (s *aerospikeStore) Write(rec *store.Record, opts ...store.WriteOption) err
 			aero.NewBin(binValue, rec.Value),
 		}
 		if rec.Metadata != nil {
-			bins = append(bins, aero.NewBin(binMeta, rec.Metadata))
+			mb, err := encodeMetadata(rec.Metadata)
+			if err != nil {
+				return err
+			}
+			bins = append(bins, aero.NewBin(binMeta, mb))
 		}
 		if err := client.PutBins(writePolicy(ttl), head, bins...); err != nil {
 			return err
@@ -572,7 +626,11 @@ func (s *aerospikeStore) writeChunked(client *aero.Client, c config, ns, table, 
 		aero.NewBin(binLayoutVersion, layoutVersion),
 	}
 	if rec.Metadata != nil {
-		bins = append(bins, aero.NewBin(binMeta, rec.Metadata))
+		mb, err := encodeMetadata(rec.Metadata)
+		if err != nil {
+			return err
+		}
+		bins = append(bins, aero.NewBin(binMeta, mb))
 	}
 	if err := client.PutBins(writePolicy(ttl), head, bins...); err != nil {
 		return err
@@ -731,9 +789,11 @@ func (s *aerospikeStore) recordFromHead(client *aero.Client, cfg config, ns stri
 	}
 	switch m := rec.Bins[binMeta].(type) {
 	case []byte:
-		if err := json.Unmarshal(m, &out.Metadata); err != nil {
-			return nil, fmt.Errorf("aerospike: deserialise metadata: %w", err)
+		md, err := decodeMetadata(m)
+		if err != nil {
+			return nil, err
 		}
+		out.Metadata = md
 	case map[string]interface{}:
 		out.Metadata = m
 	case map[interface{}]interface{}:

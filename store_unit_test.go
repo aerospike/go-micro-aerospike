@@ -463,3 +463,29 @@ func TestClosedStoreOperations(t *testing.T) {
 		t.Fatalf("List after Close: expected ErrClosed, got %v", err)
 	}
 }
+
+// TestMetadataJSONRoundTrip covers precision, nesting and legacy-safe decoding.
+func TestMetadataJSONRoundTrip(t *testing.T) {
+	in := map[string]interface{}{
+		"big":   int64(9007199254740993),
+		"ubig":  uint64(math.MaxUint64),
+		"f":     1.5,
+		"nest":  map[string]interface{}{"a": 1, "b": map[string]interface{}{"c": []interface{}{2, "x"}}},
+		"mixed": []interface{}{map[string]interface{}{"k": 1}, "s", 3},
+	}
+	b, err := encodeMetadata(in)
+	if err != nil {
+		t.Fatal(err)
+	}
+	out, err := decodeMetadata(b)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if out["big"] != int64(9007199254740993) || out["ubig"] != uint64(math.MaxUint64) || out["f"] != 1.5 {
+		t.Fatalf("numeric round-trip lost precision: %#v", out)
+	}
+	c := out["nest"].(map[string]interface{})["b"].(map[string]interface{})["c"].([]interface{})
+	if c[0] != int64(2) || c[1] != "x" {
+		t.Fatalf("nested round-trip mismatch: %#v", out)
+	}
+}
