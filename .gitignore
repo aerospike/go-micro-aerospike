@@ -70,3 +70,4 @@ target/
 .trunk/logs/
 .trunk/notifications/
 .trunk/plugins/
+docker-certs/
